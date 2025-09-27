@@ -490,6 +490,42 @@
             word-break: break-word;
         }
 
+        .generated-file-item {
+            background: #eef2ff;
+            border-radius: 12px;
+            border: 1px solid rgba(79, 70, 229, 0.2);
+            padding: 15px;
+            margin-bottom: 12px;
+            color: #1e293b;
+        }
+
+        .generated-file-item strong {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1rem;
+        }
+
+        .generated-file-item .tag {
+            background: rgba(79, 70, 229, 0.15);
+            color: #4338ca;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+        }
+
+        .generated-file-item details {
+            margin-top: 10px;
+        }
+
+        .generated-file-item pre {
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 12px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+
         /* Screenshot Preview */
         .screenshot-preview {
             display: grid;
@@ -796,6 +832,25 @@
                         </select>
                     </div>
 
+                    <!-- Response Mode Selection -->
+                    <div class="form-group">
+                        <label class="form-label">回應格式</label>
+                        <div class="toggle-group">
+                            <label>
+                                <input type="radio" name="responseMode" value="text" checked onchange="handleResponseModeChange()">
+                                文字格式
+                            </label>
+                            <label>
+                                <input type="radio" name="responseMode" value="json" onchange="handleResponseModeChange()">
+                                JSON 格式
+                            </label>
+                        </div>
+                        <div class="alert alert-info" id="responseFormatHint" style="margin-top: 10px;">
+                            <span>ℹ️</span>
+                            <span>使用文字格式輸出；包含 ```python``` 程式碼區塊與檔名標記。</span>
+                        </div>
+                    </div>
+
                     <!-- System Instruction -->
                     <div class="form-group">
                         <label class="form-label">系統指令</label>
@@ -842,6 +897,17 @@
 
             <!-- Monitor Tab -->
             <div id="monitor-tab" class="tab-content">
+                <!-- Generated Files -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon">📦</div>
+                        <div class="card-title">生成檔案資訊</div>
+                    </div>
+                    <div class="output-container" id="generatedFilesInfo">
+                        尚未生成檔案
+                    </div>
+                </div>
+
                 <!-- Terminal Output -->
                 <div class="card">
                     <div class="card-header">
@@ -938,6 +1004,44 @@
     </div>
 
     <script>
+        const DEFAULT_SYSTEM_INSTRUCTIONS = {
+            text: `You are a helpful coding assistant.
+
+Follow these formatting rules for every response:
+1. If packages must be installed, output commands inside triple semicolons: ;;;pip install package;;;
+2. Provide the complete source code inside a language-specific code block, e.g. \`\`\`python ... \`\`\`.
+3. Specify the target filename using /*/filename.ext/*/.
+4. When creating a GUI window (pygame, tkinter, etc.), set the window title to match the filename without its extension.
+
+Reply in Traditional Chinese when giving explanations outside of code blocks.`,
+            json: `You are a helpful coding assistant.
+
+Always respond with a valid JSON object using this structure:
+{
+  "files": [
+    {
+      "filename": "example.py",
+      "language": "python",
+      "opens_window": { "value": false, "title": null },
+      "dependencies": ["pip install package"],
+      "code": "完整程式碼，使用\\n保留換行"
+    }
+  ]
+}
+
+Rules:
+- Include every generated file inside the files array.
+- Use double quotes for all JSON keys and string values.
+- If no packages are required, return an empty array for "dependencies".
+- If the code does not open a window, set opens_window.value to false and opens_window.title to null.
+- Do not add explanatory text outside of the JSON payload.`
+        };
+
+        const RESPONSE_MODE_HINTS = {
+            text: '使用文字格式輸出；包含 ```python``` 程式碼區塊與 /*/filename.ext/*/ 標記。',
+            json: '使用 JSON 格式輸出 {"files": [...]}，包含 filename、language、opens_window、dependencies 與 code 欄位。'
+        };
+
         // Tab switching
         function switchTab(tabName) {
             // Remove active class from all tabs and contents
@@ -947,6 +1051,39 @@
             // Add active class to selected tab
             event.target.classList.add('active');
             document.getElementById(`${tabName}-tab`).classList.add('active');
+        }
+
+        function getResponseMode() {
+            const selected = document.querySelector('input[name="responseMode"]:checked');
+            return selected ? selected.value : 'text';
+        }
+
+        function updateResponseFormatHint(mode) {
+            const hint = document.getElementById('responseFormatHint');
+            if (hint) {
+                hint.innerHTML = `<span>ℹ️</span><span>${RESPONSE_MODE_HINTS[mode]}</span>`;
+            }
+        }
+
+        function handleResponseModeChange(preserveExisting = false) {
+            const mode = getResponseMode();
+            const instructionField = document.getElementById('systemInstruction');
+            const trimmedValue = instructionField.value.trim();
+            const otherMode = mode === 'text' ? 'json' : 'text';
+
+            if (!preserveExisting) {
+                if (!trimmedValue || trimmedValue === DEFAULT_SYSTEM_INSTRUCTIONS[otherMode]) {
+                    instructionField.value = DEFAULT_SYSTEM_INSTRUCTIONS[mode];
+                }
+            } else if (!trimmedValue) {
+                instructionField.value = DEFAULT_SYSTEM_INSTRUCTIONS[mode];
+            }
+
+            instructionField.placeholder = mode === 'json'
+                ? '設定 JSON 模式的系統指令...'
+                : '設定 AI 的行為和角色...';
+
+            updateResponseFormatHint(mode);
         }
 
         // Update parameter value display
@@ -1097,6 +1234,7 @@
                 if (result.success) {
                     document.getElementById('terminalOutput').textContent = result.output || '執行成功';
                     document.getElementById('aiResponse').textContent = result.ai_response || '無 AI 回應';
+                    renderGeneratedFiles(result.generated_files || []);
                     
                     // 更新 VS Code 狀態
                     const vscodeStatus = result.output.includes('程式已在背景成功啟動') 
@@ -1121,14 +1259,75 @@
                     
                 } else {
                     document.getElementById('terminalOutput').textContent = result.error || '執行失敗';
+                    renderGeneratedFiles([]);
                     showNotification(`執行失敗: ${result.error}`, 'danger');
                 }
             } catch (error) {
                 showNotification(`連接錯誤: ${error}`, 'danger');
                 document.getElementById('terminalOutput').textContent = `連接錯誤: ${error}`;
+                renderGeneratedFiles([]);
             } finally {
                 hideLoading();
             }
+        }
+
+        function escapeHtml(value) {
+            if (value === null || value === undefined) {
+                return '';
+            }
+            return String(value).replace(/[&<>"']/g, (char) => {
+                const entities = {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                };
+                return entities[char] || char;
+            });
+        }
+
+        function renderGeneratedFiles(files) {
+            const container = document.getElementById('generatedFilesInfo');
+            if (!container) return;
+
+            if (!files || files.length === 0) {
+                container.textContent = '尚未生成檔案';
+                return;
+            }
+
+            const html = files.map(file => {
+                const dependencies = (file.dependencies && file.dependencies.length)
+                    ? file.dependencies.map(dep => `<code>${escapeHtml(dep)}</code>`).join(', ')
+                    : '無需安裝';
+
+                const filename = file && file.filename ? String(file.filename) : '未命名檔案';
+                const language = file && file.language ? file.language : '未知';
+                const windowLabelSource = file && file.window_title
+                    ? file.window_title
+                    : filename.replace(/\.[^.]+$/, '');
+
+                const windowInfo = file && file.opens_window
+                    ? `✅ 會開啟視窗（${escapeHtml(windowLabelSource)}）`
+                    : '🚫 不會開啟視窗';
+
+                const filePath = file && file.path ? `<div>路徑：${escapeHtml(file.path)}</div>` : '';
+
+                return `
+                    <div class="generated-file-item">
+                        <strong>📄 ${escapeHtml(filename)} <span class="tag">${escapeHtml(language)}</span></strong>
+                        ${filePath}
+                        <div>${windowInfo}</div>
+                        <div>套件需求：${dependencies}</div>
+                        <details>
+                            <summary>查看完整程式碼</summary>
+                            <pre><code>${escapeHtml((file && file.code) || '')}</code></pre>
+                        </details>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = html;
         }
 
         // Capture screenshots
@@ -1240,6 +1439,7 @@
 
         // Collect configuration
         function collectConfig() {
+            const responseMode = getResponseMode();
             return {
                 connection_method: document.querySelector('input[name="connectionMethod"]:checked').value,
                 gemini_api_key: document.getElementById('apiKey').value,
@@ -1252,7 +1452,7 @@
                     max_output_tokens: parseInt(document.getElementById('maxTokens').value),
                     candidate_count: 1,
                     stop_sequences: [],
-                    response_mime_type: 'text/plain'
+                    response_mime_type: responseMode === 'json' ? 'application/json' : 'text/plain'
                 },
                 safety_settings: {
                     "HARM_CATEGORY_HARASSMENT": "BLOCK_MEDIUM_AND_ABOVE",
@@ -1265,7 +1465,8 @@
                     auto_optimize: document.getElementById('autoOptimize').checked,
                     auto_test: document.getElementById('autoTest').checked,
                     monitor_interval: parseInt(document.getElementById('monitorInterval').value)
-                }
+                },
+                response_mode: responseMode
             };
         }
 
@@ -1283,8 +1484,20 @@
                 
                 document.getElementById('apiKey').value = config.gemini_api_key || '';
                 document.getElementById('modelName').value = config.model_name || 'gemini-2.5-pro';
-                document.getElementById('systemInstruction').value = config.system_instruction || 'You are a helpful coding assistant.';
-                
+
+                const responseMode = config.response_mode || 'text';
+                const modeRadio = document.querySelector(`input[name="responseMode"][value="${responseMode}"]`);
+                if (modeRadio) {
+                    modeRadio.checked = true;
+                }
+
+                const systemInstructionField = document.getElementById('systemInstruction');
+                if (config.system_instruction) {
+                    systemInstructionField.value = config.system_instruction;
+                } else {
+                    systemInstructionField.value = DEFAULT_SYSTEM_INSTRUCTIONS[responseMode];
+                }
+
                 // Set parameters
                 const params = config.generation_params || {};
                 document.getElementById('temperature').value = params.temperature || 1.0;
@@ -1321,7 +1534,9 @@
 請將完整的程式碼內容放在一個 Python 程式碼區塊中 (\`\`\`python ... \`\`\`)，
 並輸出檔案名稱格式如下：
 /*/cool_animation.py/*/`;
-                
+
+                handleResponseModeChange(true);
+
             } catch (error) {
                 console.error('Failed to load config:', error);
             }

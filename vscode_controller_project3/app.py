@@ -17,7 +17,7 @@ import logging
 from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime
 from pathlib import Path
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 
 # Web framework imports
 from flask import Flask, render_template, jsonify, request, send_file
@@ -103,6 +103,7 @@ pygame.display.set_caption("cool_animation")  # Window title matches filename
     generation_params: Dict[str, Any] = None
     safety_settings: Dict[str, str] = None
     automation_settings: Dict[str, Any] = None
+    response_mode: str = "text"
 
     def __post_init__(self):
         if self.generation_params is None:
@@ -130,6 +131,18 @@ pygame.display.set_caption("cool_animation")  # Window title matches filename
                 "monitor_interval": 5
             }
 
+        # 確保回應模式有效並同步 MIME 類型
+        if self.response_mode not in {"text", "json"}:
+            logger.warning(f"未知的回應模式 {self.response_mode}，已重設為 text")
+            self.response_mode = "text"
+
+        if not isinstance(self.generation_params, dict):
+            self.generation_params = {}
+
+        self.generation_params["response_mime_type"] = (
+            "application/json" if self.response_mode == "json" else "text/plain"
+        )
+
 @dataclass
 class ProcessResult:
     """處理結果數據模型"""
@@ -139,7 +152,31 @@ class ProcessResult:
     ai_response: str = ""
     installation_log: str = ""
     error: str = ""
-    screenshots: List[str] = None
+    screenshots: List[str] = field(default_factory=list)
+    generated_files: List[Dict[str, Any]] = field(default_factory=list)
+    install_commands: List[str] = field(default_factory=list)
+
+
+@dataclass
+class GeneratedFile:
+    """AI 產生的檔案結構"""
+
+    filename: str
+    language: str
+    code: str
+    dependencies: List[str] = field(default_factory=list)
+    opens_window: bool = False
+    window_title: Optional[str] = None
+
+    def as_dict(self) -> Dict[str, Any]:
+        return {
+            "filename": self.filename,
+            "language": self.language,
+            "dependencies": self.dependencies,
+            "opens_window": self.opens_window,
+            "window_title": self.window_title,
+            "code": self.code,
+        }
 
 # ============================================
 # 配置管理模塊
@@ -540,85 +577,243 @@ class ScreenCapture:
 
 class CodeProcessor:
     """程式碼解析和處理器"""
-    
+
     @staticmethod
-    def parse_ai_response(response_text: str) -> Tuple[str, str, Optional[str]]:
-        """解析 AI 回應中的程式碼和指令"""
-        # 解析程式碼區塊
+    def parse_ai_response(response_text: str, response_mode: str) -> Tuple[List[GeneratedFile], List[str]]:
+        """解析 AI 回應，支援文字與 JSON 兩種格式"""
+
+        response_mode = response_mode or "text"
+
+        if response_mode == "json":
+            return CodeProcessor._parse_json_response(response_text)
+
+        return CodeProcessor._parse_text_response(response_text)
+
+    @staticmethod
+    def _parse_text_response(response_text: str) -> Tuple[List[GeneratedFile], List[str]]:
+        """解析純文字格式的 AI 回應"""
+
         code_match = re.search(r'```python(.*?)```', response_text, re.DOTALL)
         if not code_match:
-            # 嘗試其他可能的格式
             code_match = re.search(r'```(.*?)```', response_text, re.DOTALL)
             if not code_match:
                 raise ValueError(
                     "找不到程式碼區塊。請確保 AI 回應包含 ```python ... ``` 格式的程式碼。\n"
                     f"AI 回應前 500 字元：\n{response_text[:500]}..."
                 )
-        
+
         code = code_match.group(1).strip()
         if not code:
             raise ValueError("程式碼區塊為空")
-        
-        # 解析檔案名稱
+
         filename_match = re.search(r'/\*/(.*?)/\*/', response_text)
         if not filename_match:
-            # 嘗試其他可能的格式
             filename_match = re.search(r'檔案名稱[：:]\s*(\S+\.py)', response_text, re.IGNORECASE)
             if not filename_match:
-                # 如果還是找不到，提供預設名稱
                 logger.warning("找不到檔案名稱，使用預設名稱")
                 filename = "generated_code.py"
             else:
                 filename = filename_match.group(1).strip()
         else:
             filename = filename_match.group(1).strip()
-        
-        # 驗證檔案名稱安全性
+
         if ".." in filename or "/" in filename or "\\" in filename:
             raise ValueError(f"不安全的檔案名稱: {filename}")
-        
-        # 確保檔案名稱有 .py 副檔名
+
         if not filename.endswith('.py'):
             filename += '.py'
-        
-        # 解析安裝指令（可選）
+
         install_match = re.search(r';;;(.*);;;', response_text)
         install_command = install_match.group(1).strip() if install_match else None
-        
+
+        generated_file = GeneratedFile(
+            filename=filename,
+            language=CodeProcessor._infer_language_from_filename(filename, default="python"),
+            code=code,
+            dependencies=[install_command] if install_command else [],
+        )
+
         logger.info(f"解析成功 - 檔案名: {filename}, 安裝指令: {install_command}")
-        
-        return filename, code, install_command
+
+        return [generated_file], ([install_command] if install_command else [])
+
+    @staticmethod
+    def _parse_json_response(response_text: str) -> Tuple[List[GeneratedFile], List[str]]:
+        """解析 JSON 格式的 AI 回應"""
+
+        try:
+            parsed = json.loads(response_text)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"JSON 解析失敗，請確認回應為有效 JSON。錯誤: {exc}") from exc
+
+        if isinstance(parsed, dict):
+            files_data = parsed.get("files") or parsed.get("data")
+        else:
+            files_data = parsed
+
+        if not isinstance(files_data, list):
+            raise ValueError("JSON 回應格式錯誤，應包含 'files' 陣列。")
+
+        generated_files: List[GeneratedFile] = []
+        install_commands: List[str] = []
+
+        for index, entry in enumerate(files_data, start=1):
+            if not isinstance(entry, dict):
+                raise ValueError(f"第 {index} 個項目不是物件格式，請檢查 JSON 結構。")
+
+            raw_filename = entry.get("filename") or entry.get("name")
+            if not raw_filename or not isinstance(raw_filename, str):
+                raise ValueError(f"第 {index} 個項目缺少 filename 欄位。")
+
+            filename = CodeProcessor._sanitize_filename(raw_filename)
+            language = entry.get("language") or CodeProcessor._infer_language_from_filename(filename)
+
+            raw_dependencies = entry.get("dependencies")
+            dependencies = CodeProcessor._normalize_dependencies(raw_dependencies)
+            install_commands.extend(dependencies)
+
+            opens_window_data = entry.get("opens_window")
+            opens_window = False
+            window_title: Optional[str] = None
+
+            if isinstance(opens_window_data, dict):
+                opens_window = bool(opens_window_data.get("value"))
+                window_title = opens_window_data.get("title")
+            elif isinstance(opens_window_data, bool):
+                opens_window = opens_window_data
+                window_title = entry.get("window_title")
+            else:
+                opens_window = bool(opens_window_data)
+                window_title = entry.get("window_title")
+
+            code = entry.get("code")
+            if not isinstance(code, str) or not code.strip():
+                raise ValueError(f"第 {index} 個檔案缺少有效的程式碼內容。")
+
+            if opens_window and not window_title:
+                window_title = Path(filename).stem
+
+            generated_files.append(
+                GeneratedFile(
+                    filename=filename,
+                    language=language or "plaintext",
+                    code=code,
+                    dependencies=dependencies,
+                    opens_window=opens_window,
+                    window_title=window_title,
+                )
+            )
+
+        if not generated_files:
+            raise ValueError("JSON 回應未包含任何檔案。")
+
+        # 移除重複的安裝指令並保留順序
+        unique_commands = list(dict.fromkeys(filter(None, install_commands)))
+
+        logger.info(
+            "解析 JSON 回應成功 - 檔案: %s, 安裝指令數量: %d",
+            [file.filename for file in generated_files],
+            len(unique_commands)
+        )
+
+        return generated_files, unique_commands
+
+    @staticmethod
+    def _sanitize_filename(filename: str) -> str:
+        filename = filename.strip()
+        if not filename:
+            raise ValueError("檔案名稱不可為空")
+
+        if any(sep in filename for sep in ["..", "/", "\\"]):
+            raise ValueError(f"不安全的檔案名稱: {filename}")
+
+        return filename
+
+    @staticmethod
+    def _infer_language_from_filename(filename: str, default: str = "") -> str:
+        suffix = Path(filename).suffix.lstrip('.').lower()
+        return suffix or default or "plaintext"
+
+    @staticmethod
+    def _normalize_dependencies(dependencies: Any) -> List[str]:
+        if dependencies is None:
+            return []
+
+        if isinstance(dependencies, str):
+            dependencies_list = [dependencies]
+        elif isinstance(dependencies, list):
+            dependencies_list = dependencies
+        else:
+            raise ValueError("dependencies 欄位必須是字串或陣列")
+
+        cleaned: List[str] = []
+        for item in dependencies_list:
+            if isinstance(item, str):
+                command = item.strip()
+                if command:
+                    cleaned.append(command)
+            else:
+                raise ValueError("dependencies 陣列中的項目必須為字串")
+
+        return cleaned
+
+    @staticmethod
+    def select_primary_file(files: List[GeneratedFile]) -> Optional[GeneratedFile]:
+        if not files:
+            return None
+
+        for file in files:
+            if file.filename.lower().endswith('.py'):
+                return file
+
+        return files[0]
     
     @staticmethod
-    def install_packages(install_command: str) -> str:
-        """安裝套件"""
-        if not install_command:
+    def install_packages(install_commands: List[str]) -> str:
+        """依序安裝套件"""
+        if not install_commands:
             return ""
-        
-        logger.info(f"執行安裝指令: {install_command}")
-        
-        full_command = [sys.executable, "-m"] + install_command.split()
-        
-        try:
-            result = subprocess.run(
-                full_command,
-                capture_output=True,
-                text=True,
-                check=True,
-                encoding='utf-8'
-            )
-            
-            log = f"✅ 成功執行: {install_command}\n"
-            log += result.stdout
-            if result.stderr:
-                log += f"\n⚠️ 警告:\n{result.stderr}"
-            
-            return log
-            
-        except subprocess.CalledProcessError as e:
-            error_msg = f"❌ 安裝失敗: {install_command}\n錯誤: {e.stderr}"
-            logger.error(error_msg)
-            raise Exception(error_msg)
+
+        logs: List[str] = []
+
+        for install_command in install_commands:
+            logger.info(f"執行安裝指令: {install_command}")
+            command_stripped = install_command.strip()
+            if not command_stripped:
+                continue
+
+            try:
+                if command_stripped.startswith('pip ') or command_stripped.startswith('pip3 '):
+                    full_command = [sys.executable, "-m"] + command_stripped.split()
+                    shell = False
+                else:
+                    full_command = install_command
+                    shell = True
+
+                result = subprocess.run(
+                    full_command,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                    encoding='utf-8',
+                    shell=shell
+                )
+
+                log = [f"✅ 成功執行: {install_command}"]
+                if result.stdout:
+                    log.append(result.stdout.strip())
+                if result.stderr:
+                    log.append(f"⚠️ 警告:\n{result.stderr.strip()}")
+
+                logs.append("\n".join(filter(None, log)))
+
+            except subprocess.CalledProcessError as e:
+                error_detail = e.stderr or e.stdout or str(e)
+                error_msg = f"❌ 安裝失敗: {install_command}\n錯誤: {error_detail.strip()}"
+                logger.error(error_msg)
+                logs.append(error_msg)
+
+        return "\n\n".join(logs)
     
     @staticmethod
     def save_code_file(folder_path: str, filename: str, code: str) -> str:
@@ -734,8 +929,15 @@ class ProcessManager:
             # Step 2: 解析 AI 回應
             logger.info("Step 2: 解析 AI 回應...")
             try:
-                filename, code, install_cmd = CodeProcessor.parse_ai_response(ai_response)
-                result.filename = filename
+                generated_files, install_commands = CodeProcessor.parse_ai_response(
+                    ai_response,
+                    config.response_mode
+                )
+                result.generated_files = [file.as_dict() for file in generated_files]
+                result.install_commands = install_commands
+
+                primary_file = CodeProcessor.select_primary_file(generated_files)
+                result.filename = primary_file.filename if primary_file else ""
             except ValueError as parse_error:
                 # 解析失敗時，返回錯誤但包含 AI 原始回應
                 logger.error(f"解析 AI 回應失敗: {parse_error}")
@@ -745,10 +947,23 @@ class ProcessManager:
 {str(parse_error)}
 
 === 📝 提示 ===
-AI 回應必須包含：
+若使用文字格式，請確保包含：
 1. Python 程式碼區塊：```python ... ```
 2. 檔案名稱：/*/filename.py/*/
 3. (可選) 安裝指令：;;;pip install package;;;
+
+若使用 JSON 格式，請確保回應為有效 JSON，並符合：
+{{
+  "files": [
+    {{
+      "filename": "檔案名稱 (含副檔名)",
+      "language": "程式語言",
+      "opens_window": {{ "value": false, "title": null }},
+      "dependencies": ["pip install ..."],
+      "code": "完整程式碼"
+    }}
+  ]
+}}
 
 === 🤖 AI 原始回應 ===
 請查看下方「AI 回應」區域以檢視完整內容。
@@ -756,93 +971,127 @@ AI 回應必須包含：
 """
                 # 即使解析失敗也返回，讓用戶能看到 AI 回應
                 return result
-            
+
             # Step 3: 安裝套件（如果需要）
-            if install_cmd:
+            if install_commands:
                 logger.info("Step 3: 安裝套件...")
-                try:
-                    result.installation_log = CodeProcessor.install_packages(install_cmd)
-                except Exception as install_error:
-                    logger.warning(f"套件安裝失敗: {install_error}")
-                    result.installation_log = f"⚠️ 套件安裝失敗: {install_error}"
-            
+                result.installation_log = CodeProcessor.install_packages(install_commands)
+
             # Step 4: 儲存程式碼檔案
             logger.info("Step 4: 儲存程式碼檔案...")
-            file_path = CodeProcessor.save_code_file(folder_path, filename, code)
-            
+            saved_paths: Dict[str, str] = {}
+            for file in generated_files:
+                file_path = CodeProcessor.save_code_file(folder_path, file.filename, file.code)
+                saved_paths[file.filename] = file_path
+
+            result.generated_files = [
+                {**file.as_dict(), "path": saved_paths.get(file.filename)}
+                for file in generated_files
+            ]
+
+            primary_file = CodeProcessor.select_primary_file(generated_files)
+            primary_path = saved_paths.get(primary_file.filename) if primary_file else None
+
             # Step 5: 啟動 VS Code 並執行程式
             logger.info("Step 5: 啟動 VS Code 並執行程式...")
-            vscode_result = VSCodeController.launch_and_open(folder_path, filename)
-            
+            vscode_result = VSCodeController.launch_and_open(
+                folder_path,
+                primary_file.filename if primary_file else result.filename
+            )
+
             # Step 6: 使用 Popen 非阻塞式執行程式（核心執行方式）
-            logger.info(f"Step 6: 使用 Popen 非阻塞式執行程式: {file_path}")
-            try:
-                # 使用 subprocess.Popen 在背景執行程式
-                process = subprocess.Popen(
-                    [sys.executable, str(file_path)],
-                    cwd=folder_path,  # 確保在正確的目錄執行
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                    encoding='utf-8',
-                    creationflags=subprocess.CREATE_NEW_CONSOLE if platform.system() == 'Windows' else 0
-                )
-                
-                # 將程式加入管理列表
-                ProgramManager.add_program(process, filename, folder_path)
-                
-                # 等待一小段時間檢查程式是否正常啟動
-                time.sleep(0.5)
-                poll_result = process.poll()
-                
-                if poll_result is None:
-                    # 程式仍在運行（正常情況）
-                    logger.info(f"程式已成功在背景啟動，PID: {process.pid}")
-                    execution_status = "✅ 程式已在背景成功啟動"
-                    execution_detail = f"程序 ID (PID): {process.pid}"
-                elif poll_result == 0:
-                    # 程式已正常結束（可能是快速執行的腳本）
-                    stdout, stderr = process.communicate(timeout=1)
-                    execution_status = "✅ 程式執行完成"
-                    execution_detail = f"輸出:\n{stdout}" if stdout else "程式已結束"
+            if primary_path and primary_file.filename.lower().endswith('.py'):
+                logger.info(f"Step 6: 使用 Popen 非阻塞式執行程式: {primary_path}")
+                try:
+                    process = subprocess.Popen(
+                        [sys.executable, str(primary_path)],
+                        cwd=folder_path,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True,
+                        encoding='utf-8',
+                        creationflags=subprocess.CREATE_NEW_CONSOLE if platform.system() == 'Windows' else 0
+                    )
+
+                    ProgramManager.add_program(process, primary_file.filename, folder_path)
+
+                    time.sleep(0.5)
+                    poll_result = process.poll()
+
+                    if poll_result is None:
+                        logger.info(f"程式已成功在背景啟動，PID: {process.pid}")
+                        execution_status = "✅ 程式已在背景成功啟動"
+                        execution_detail = f"程序 ID (PID): {process.pid}"
+                    elif poll_result == 0:
+                        stdout, stderr = process.communicate(timeout=1)
+                        execution_status = "✅ 程式執行完成"
+                        execution_detail = f"輸出:\n{stdout}" if stdout else "程式已結束"
+                    else:
+                        stdout, stderr = process.communicate(timeout=1)
+                        execution_status = "⚠️ 程式執行遇到問題"
+                        execution_detail = f"錯誤:\n{stderr}" if stderr else f"退出碼: {poll_result}"
+
+                except Exception as e:
+                    logger.error(f"Popen 執行失敗: {e}")
+                    execution_status = "❌ 程式啟動失敗"
+                    execution_detail = str(e)
+            else:
+                if primary_file:
+                    execution_status = "ℹ️ 未自動執行"
+                    execution_detail = (
+                        "生成的主要檔案不是 Python 腳本，請手動執行或檢查回應。"
+                    )
                 else:
-                    # 程式執行出錯
-                    stdout, stderr = process.communicate(timeout=1)
-                    execution_status = "⚠️ 程式執行遇到問題"
-                    execution_detail = f"錯誤:\n{stderr}" if stderr else f"退出碼: {poll_result}"
-                    
-            except Exception as e:
-                logger.error(f"Popen 執行失敗: {e}")
-                execution_status = "❌ 程式啟動失敗"
-                execution_detail = str(e)
-            
+                    execution_status = "ℹ️ 未自動執行"
+                    execution_detail = "AI 回應未提供可執行的檔案。"
+
             # 整合執行結果
-            result.output = f"""
-=== 執行摘要 ===
-📁 專案資料夾: {folder_path}
-📄 檔案名稱: {filename}
-🖥️ VS Code 狀態: {'✅ 已開啟' if vscode_result.get('success') else '⚠️ 開啟失敗'}
+            file_summary_lines = []
+            for file in generated_files:
+                window_info = (
+                    f"視窗: {file.window_title or Path(file.filename).stem}"
+                    if file.opens_window
+                    else "視窗: 無"
+                )
+                dependency_info = (
+                    f"🔧 套件: {', '.join(file.dependencies)}"
+                    if file.dependencies
+                    else "🔧 套件: 無需安裝"
+                )
+                file_summary_lines.append(
+                    f"📄 {file.filename} [{file.language}] | {window_info}\n   {dependency_info}"
+                )
 
-=== 程式執行狀態 ===
-{execution_status}
-{execution_detail}
+            file_summary = "\n".join(file_summary_lines) if file_summary_lines else "尚未生成任何檔案"
 
-=== 操作提示 ===
-💡 程式已在背景執行，您可以：
-1. 查看 VS Code 視窗以編輯程式碼
-2. 使用「延遲 5 秒後擷取」來擷取運行畫面
-3. 使用「擷取 VS Code Terminal」查看輸出
-4. 如果是圖形程式，應該會看到新視窗出現
+            installation_section = ""
+            if install_commands:
+                commands_text = "\n".join(f"• {cmd}" for cmd in install_commands)
+                installation_section += f"=== 套件安裝指令 ===\n{commands_text}\n\n"
 
-⚠️ 注意：
-- 圖形介面程式（pygame/tkinter）會開啟新視窗
-- Web 應用會在瀏覽器中開啟
-- 長時間運行的程式會持續在背景執行
-"""
-            
             if result.installation_log:
-                result.output = f"=== 套件安裝日誌 ===\n{result.installation_log}\n\n" + result.output
-            
+                installation_section += f"=== 套件安裝日誌 ===\n{result.installation_log}\n\n"
+
+            result.output = (
+                installation_section
+                + f"=== 生成檔案 ===\n{file_summary}\n\n"
+                + f"=== 執行摘要 ===\n"
+                + f"📁 專案資料夾: {folder_path}\n"
+                + f"📄 主檔案: {result.filename or '無'}\n"
+                + f"🖥️ VS Code 狀態: {'✅ 已開啟' if vscode_result.get('success') else '⚠️ 開啟失敗'}\n\n"
+                + f"=== 程式執行狀態 ===\n{execution_status}\n{execution_detail}\n\n"
+                + "=== 操作提示 ===\n"
+                + "💡 程式已在背景執行或已產生檔案，您可以：\n"
+                + "1. 查看 VS Code 視窗以編輯程式碼\n"
+                + "2. 使用「延遲 5 秒後擷取」來擷取運行畫面\n"
+                + "3. 使用「擷取 VS Code Terminal」查看輸出\n"
+                + "4. 如為圖形程式，請留意是否開啟視窗\n\n"
+                + "⚠️ 注意：\n"
+                + "- 圖形介面程式（pygame/tkinter）會開啟新視窗\n"
+                + "- Web 應用可能需瀏覽器操作\n"
+                + "- 長時間運行的程式會持續在背景執行"
+            )
+
             result.success = True
             
         except Exception as e:
@@ -938,6 +1187,8 @@ def run_process():
             'output': result.output,
             'filename': result.filename,
             'ai_response': result.ai_response or '無 AI 回應',
+            'generated_files': result.generated_files,
+            'install_commands': result.install_commands,
             'installation_log': result.installation_log,
             'error': result.error
         })
