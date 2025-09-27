@@ -1,0 +1,22 @@
+# Web Framework
+Flask==2.3.3
+pywebview==4.3.3
+
+# Automation Tools
+PyAutoGUI==0.9.54
+pygetwindow==0.0.9
+pyperclip==1.8.2
+
+# Screen Capture (新增)
+mss==9.0.1
+Pillow==10.1.0  # 用於圖片處理
+
+# AI Integration
+google-generativeai==0.3.2
+python-dotenv==1.0.0
+
+# Optional: Google Cloud Auth
+google-auth==2.23.4  # 可選，用於 Google Cloud Auth 模式
+
+# Logging and Utils
+colorlog==6.7.0  # 彩色日誌輸出（可選）

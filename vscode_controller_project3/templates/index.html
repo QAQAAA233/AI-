@@ -1,0 +1,1463 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 自動化開發控制器 Pro</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --secondary: #64748b;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --dark: #1e293b;
+            --light: #f8fafc;
+            --border: #e2e8f0;
+            --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+            --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-blue: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--dark);
+        }
+
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: var(--shadow-lg);
+            color: white;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            letter-spacing: -0.5px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            background: white;
+            border-radius: 15px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-md);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--gradient-blue);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            margin-right: 15px;
+            font-size: 1.2rem;
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        /* Tab Navigation */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 5px;
+            background: var(--light);
+            border-radius: 10px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            background: white;
+            color: var(--primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .tab:hover:not(.active) {
+            color: var(--dark);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: var(--dark);
+        }
+
+        .input-with-button {
+            display: flex;
+            gap: 10px;
+        }
+
+        input[type="text"],
+        input[type="password"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: var(--light);
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: white;
+        }
+
+        textarea {
+            resize: vertical;
+            font-family: 'Consolas', 'Monaco', monospace;
+            min-height: 120px;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--gradient-blue);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-secondary {
+            background: var(--secondary);
+            color: white;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-warning {
+            background: var(--warning);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+        
+        .btn-sm {
+            padding: 4px 12px;
+            font-size: 0.875rem;
+        }
+
+        .btn-large {
+            width: 100%;
+            padding: 16px;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* Toggle Switch */
+        .toggle-group {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 60px;
+            height: 30px;
+        }
+
+        .toggle-switch input {
+            display: none;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--secondary);
+            border-radius: 30px;
+            transition: 0.4s;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            border-radius: 50%;
+            transition: 0.4s;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: var(--primary);
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(30px);
+        }
+
+        /* Parameter Controls */
+        .param-control {
+            display: grid;
+            grid-template-columns: 150px 1fr 80px;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .param-label {
+            font-weight: 500;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: var(--primary);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .param-value {
+            background: var(--light);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-align: center;
+            min-width: 70px;
+        }
+
+        /* Alerts */
+        .alert {
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .alert-info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .alert-warning {
+            background: #fed7aa;
+            color: #92400e;
+        }
+
+        .alert-danger {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        /* Loading Indicator - 非阻塞式 */
+        .loading-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 10px;
+            padding: 15px 20px;
+            box-shadow: var(--shadow-lg);
+            display: none;
+            align-items: center;
+            gap: 15px;
+            z-index: 1000;
+            max-width: 300px;
+        }
+
+        .loading-indicator.active {
+            display: flex;
+        }
+        
+        .small-spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .loading-content {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Output Display */
+        .output-container {
+            background: #0f172a;
+            color: #e2e8f0;
+            border-radius: 10px;
+            padding: 20px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        /* Screenshot Preview */
+        .screenshot-preview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .screenshot-item {
+            position: relative;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.3s ease;
+        }
+
+        .screenshot-item:hover {
+            transform: scale(1.05);
+        }
+
+        .screenshot-item img {
+            width: 100%;
+            height: auto;
+            display: block;
+            cursor: pointer;
+        }
+        
+        .screenshot-item img:hover {
+            opacity: 0.9;
+        }
+
+        .screenshot-label {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px;
+            font-size: 0.85rem;
+        }
+
+        /* Grid Layout */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .toast {
+            background: white;
+            border-radius: 10px;
+            padding: 15px 20px;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 250px;
+            max-width: 400px;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .toast.success { border-left: 4px solid var(--success); }
+        .toast.warning { border-left: 4px solid var(--warning); }
+        .toast.danger { border-left: 4px solid var(--danger); }
+        .toast.info { border-left: 4px solid var(--primary); }
+        
+        /* Image Modal */
+        .image-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 3000;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+        
+        .image-modal.active {
+            display: flex;
+        }
+        
+        .image-modal img {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8rem;
+            }
+
+            .tabs {
+                flex-direction: column;
+            }
+
+            .param-control {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8rem;
+            }
+
+            .tabs {
+                flex-direction: column;
+            }
+
+            .param-control {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Image Modal -->
+    <div class="image-modal" id="imageModal" onclick="closeImageModal()">
+        <img id="modalImage" src="" alt="預覽">
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Loading Indicator (非阻塞) -->
+    <div class="loading-indicator" id="loadingIndicator">
+        <div class="small-spinner"></div>
+        <span id="loadingMessage">處理中...</span>
+    </div>
+
+    <div class="main-container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🚀 AI 自動化開發控制器 Pro</h1>
+            <p>智能化程式開發助手 - 整合 Gemini AI 與 VS Code 自動化控制</p>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div class="status-indicator">
+                <div class="status-dot"></div>
+                <span>系統就緒</span>
+            </div>
+            <div id="connectionStatus">
+                <span id="connectionMode">連接模式: API Key</span>
+            </div>
+        </div>
+
+        <!-- Main Content with Tabs -->
+        <div class="card">
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('main')">
+                    🎯 主控制台
+                </button>
+                <button class="tab" onclick="switchTab('config')">
+                    ⚙️ 設定
+                </button>
+                <button class="tab" onclick="switchTab('monitor')">
+                    📊 監控
+                </button>
+                <button class="tab" onclick="switchTab('automation')">
+                    🤖 自動化
+                </button>
+            </div>
+
+            <!-- Main Tab -->
+            <div id="main-tab" class="tab-content active">
+                <!-- Folder Selection -->
+                <div class="form-group">
+                    <label class="form-label">📁 專案資料夾</label>
+                    <div class="input-with-button">
+                        <input type="text" id="folderPath" placeholder="選擇或輸入專案資料夾路徑..." readonly>
+                        <button class="btn btn-primary" onclick="selectFolder()">
+                            <span>📂</span> 瀏覽
+                        </button>
+                    </div>
+                </div>
+
+                <!-- AI Prompt -->
+                <div class="form-group">
+                    <label class="form-label">💡 AI 指令</label>
+                    <textarea id="prompt" placeholder="請輸入您要 AI 協助的任務描述..."></textarea>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="grid-2">
+                    <button class="btn btn-primary btn-large" onclick="runProcess()">
+                        <span>⚡</span> 執行 AI 自動化
+                    </button>
+                    <button class="btn btn-success btn-large" onclick="captureScreenshots()">
+                        <span>📸</span> 立即擷取畫面
+                    </button>
+                </div>
+                
+                <!-- Delayed Capture Button -->
+                <div style="margin-top: 10px;">
+                    <button class="btn btn-warning btn-large" onclick="delayedCaptureScreenshots()">
+                        <span>⏱️</span> 延遲 5 秒後擷取（適合擷取程式視窗）
+                    </button>
+                </div>
+
+                <!-- VS Code Control -->
+                <div class="form-group" style="margin-top: 20px;">
+                    <label class="form-label">🖥️ VS Code 控制</label>
+                    <div class="alert alert-info">
+                        <span>ℹ️</span>
+                        <span id="vscodeStatus">VS Code 尚未啟動</span>
+                    </div>
+                </div>
+                
+                <!-- Running Programs -->
+                <div class="form-group">
+                    <label class="form-label">▶️ 運行中的程式</label>
+                    <div id="runningPrograms" class="alert alert-warning">
+                        <span>⏸️</span>
+                        <span>尚無運行中的程式</span>
+                    </div>
+                    <button class="btn btn-secondary" onclick="checkRunningPrograms()" style="width: 100%; margin-top: 10px;">
+                        🔄 重新整理程式狀態
+                    </button>
+                </div>
+            </div>
+
+            <!-- Config Tab -->
+            <div id="config-tab" class="tab-content">
+                <!-- Connection Settings -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon">🔌</div>
+                        <div class="card-title">連接設定</div>
+                    </div>
+
+                    <div class="toggle-group">
+                        <label>
+                            <input type="radio" name="connectionMethod" value="api_key" checked onchange="toggleConnectionMethod()">
+                            API Key 模式
+                        </label>
+                        <label>
+                            <input type="radio" name="connectionMethod" value="gcloud_auth" onchange="toggleConnectionMethod()">
+                            Google Cloud Auth 模式
+                        </label>
+                    </div>
+
+                    <div id="apiKeySection">
+                        <div class="form-group">
+                            <label class="form-label">Gemini API Key</label>
+                            <div class="input-with-button">
+                                <input type="password" id="apiKey" placeholder="輸入您的 API Key...">
+                                <button class="btn btn-secondary" onclick="window.open('https://aistudio.google.com/app/apikey', '_blank')">
+                                    獲取 Key
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="gcloudSection" style="display: none;">
+                        <div class="alert alert-info">
+                            <span>ℹ️</span>
+                            <span>使用 Google Cloud 本地憑證進行驗證</span>
+                        </div>
+                    </div>
+
+                    <!-- Model Selection -->
+                    <div class="form-group">
+                        <label class="form-label">AI 模型</label>
+                        <select id="modelName">
+                            <option value="gemini-2.5-pro">Gemini 2.5 Pro (最強)</option>
+                            <option value="gemini-2.5-flash">Gemini 2.5 Flash (最快)</option>
+                            <option value="gemini-1.5-pro-latest">Gemini 1.5 Pro</option>
+                            <option value="gemini-1.5-flash-latest">Gemini 1.5 Flash</option>
+                        </select>
+                    </div>
+
+                    <!-- System Instruction -->
+                    <div class="form-group">
+                        <label class="form-label">系統指令</label>
+                        <textarea id="systemInstruction" placeholder="設定 AI 的行為和角色..."></textarea>
+                    </div>
+
+                    <button class="btn btn-success btn-large" onclick="saveConfig()">
+                        💾 儲存設定
+                    </button>
+                </div>
+
+                <!-- Advanced Parameters -->
+                <div class="card" style="margin-top: 20px;">
+                    <div class="card-header">
+                        <div class="card-icon">🎛️</div>
+                        <div class="card-title">進階參數</div>
+                    </div>
+
+                    <div class="param-control">
+                        <div class="param-label">溫度 (Temperature)</div>
+                        <input type="range" id="temperature" min="0" max="2" step="0.05" value="1.0" oninput="updateParamValue('temperature')">
+                        <div class="param-value" id="temperature-value">1.0</div>
+                    </div>
+
+                    <div class="param-control">
+                        <div class="param-label">Top-P</div>
+                        <input type="range" id="topP" min="0" max="1" step="0.05" value="0.95" oninput="updateParamValue('topP')">
+                        <div class="param-value" id="topP-value">0.95</div>
+                    </div>
+
+                    <div class="param-control">
+                        <div class="param-label">Top-K</div>
+                        <input type="range" id="topK" min="1" max="100" step="1" value="64" oninput="updateParamValue('topK')">
+                        <div class="param-value" id="topK-value">64</div>
+                    </div>
+
+                    <div class="param-control">
+                        <div class="param-label">Max Tokens</div>
+                        <input type="range" id="maxTokens" min="1" max="8192" step="1" value="8192" oninput="updateParamValue('maxTokens')">
+                        <div class="param-value" id="maxTokens-value">8192</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Monitor Tab -->
+            <div id="monitor-tab" class="tab-content">
+                <!-- Terminal Output -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon">💻</div>
+                        <div class="card-title">Terminal 輸出</div>
+                    </div>
+                    <div class="output-container" id="terminalOutput">
+                        等待執行結果...
+                    </div>
+                </div>
+
+                <!-- Screenshots -->
+                <div class="card" style="margin-top: 20px;">
+                    <div class="card-header">
+                        <div class="card-icon">📸</div>
+                        <div class="card-title">螢幕擷取</div>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <button class="btn btn-secondary" onclick="monitorTerminal()" style="width: 100%;">
+                            <span>📟</span> 擷取 VS Code Terminal
+                        </button>
+                    </div>
+                    <div class="screenshot-preview" id="screenshotPreview">
+                        <!-- Screenshots will be displayed here -->
+                    </div>
+                </div>
+
+                <!-- AI Response -->
+                <div class="card" style="margin-top: 20px;">
+                    <div class="card-header">
+                        <div class="card-icon">🤖</div>
+                        <div class="card-title">AI 回應</div>
+                    </div>
+                    <div class="output-container" id="aiResponse">
+                        等待 AI 回應...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Automation Tab -->
+            <div id="automation-tab" class="tab-content">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon">🔄</div>
+                        <div class="card-title">自動化工作流程</div>
+                    </div>
+
+                    <div class="toggle-group">
+                        <label>自動錯誤修正</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="autoErrorFix">
+                            <span class="toggle-slider"></span>
+                        </div>
+                    </div>
+
+                    <div class="toggle-group">
+                        <label>自動程式碼優化</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="autoOptimize">
+                            <span class="toggle-slider"></span>
+                        </div>
+                    </div>
+
+                    <div class="toggle-group">
+                        <label>自動測試執行</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="autoTest">
+                            <span class="toggle-slider"></span>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 20px;">
+                        <label class="form-label">監控間隔（秒）</label>
+                        <input type="number" id="monitorInterval" value="5" min="1" max="60">
+                    </div>
+
+                    <button class="btn btn-warning btn-large" onclick="toggleAutomation()">
+                        🎯 開始自動化監控
+                    </button>
+                </div>
+
+                <!-- Automation Log -->
+                <div class="card" style="margin-top: 20px;">
+                    <div class="card-header">
+                        <div class="card-icon">📝</div>
+                        <div class="card-title">自動化日誌</div>
+                    </div>
+                    <div class="output-container" id="automationLog">
+                        自動化工作流程日誌將顯示於此...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        function switchTab(tabName) {
+            // Remove active class from all tabs and contents
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // Add active class to selected tab
+            event.target.classList.add('active');
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+        }
+
+        // Update parameter value display
+        function updateParamValue(paramName) {
+            const slider = document.getElementById(paramName);
+            const valueDisplay = document.getElementById(`${paramName}-value`);
+            valueDisplay.textContent = slider.value;
+        }
+
+        // Toggle connection method
+        function toggleConnectionMethod() {
+            const method = document.querySelector('input[name="connectionMethod"]:checked').value;
+            const apiKeySection = document.getElementById('apiKeySection');
+            const gcloudSection = document.getElementById('gcloudSection');
+            
+            if (method === 'api_key') {
+                apiKeySection.style.display = 'block';
+                gcloudSection.style.display = 'none';
+            } else {
+                apiKeySection.style.display = 'none';
+                gcloudSection.style.display = 'block';
+            }
+            
+            document.getElementById('connectionMode').textContent = `連接模式: ${method === 'api_key' ? 'API Key' : 'Google Cloud Auth'}`;
+        }
+
+        // Show loading indicator (非阻塞)
+        function showLoading(message = '處理中...') {
+            document.getElementById('loadingMessage').textContent = message;
+            document.getElementById('loadingIndicator').classList.add('active');
+        }
+
+        // Hide loading indicator
+        function hideLoading() {
+            document.getElementById('loadingIndicator').classList.remove('active');
+        }
+
+        // Select folder
+        async function selectFolder() {
+            showLoading('正在開啟資料夾選擇器...');
+            try {
+                const response = await fetch('/select-folder');
+                const result = await response.json();
+                
+                if (result.success && result.path) {
+                    document.getElementById('folderPath').value = result.path;
+                    showNotification('成功選擇資料夾', 'success');
+                } else {
+                    showNotification(result.error || '未選擇資料夾', 'warning');
+                }
+            } catch (error) {
+                showNotification(`錯誤: ${error}`, 'danger');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Check running programs
+        async function checkRunningPrograms() {
+            try {
+                const response = await fetch('/running-programs');
+                const result = await response.json();
+                
+                if (result.success) {
+                    const programsDiv = document.getElementById('runningPrograms');
+                    
+                    if (result.programs.length > 0) {
+                        let html = '<div>';
+                        result.programs.forEach(prog => {
+                            const statusIcon = prog.status === 'running' ? '🟢' : '🔴';
+                            const statusText = prog.status === 'running' 
+                                ? `運行中 (${prog.run_time}秒)` 
+                                : `已結束 (退出碼: ${prog.exit_code})`;
+                            
+                            html += `
+                                <div style="margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+                                    ${statusIcon} <strong>PID ${prog.pid}:</strong> ${prog.filename}
+                                    <br><small>${statusText}</small>
+                                    ${prog.status === 'running' ? `
+                                        <button class="btn btn-danger btn-sm" onclick="terminateProgram(${prog.pid})" style="float: right; padding: 2px 8px; font-size: 0.8rem;">
+                                            停止
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            `;
+                        });
+                        html += '</div>';
+                        programsDiv.innerHTML = html;
+                        programsDiv.className = 'alert alert-success';
+                    } else {
+                        programsDiv.innerHTML = '<span>⏸️</span> <span>沒有運行中的程式</span>';
+                        programsDiv.className = 'alert alert-warning';
+                    }
+                }
+            } catch (error) {
+                console.error('檢查程式狀態失敗:', error);
+            }
+        }
+        
+        // Terminate program
+        async function terminateProgram(pid) {
+            if (!confirm(`確定要終止 PID ${pid} 的程式嗎？`)) return;
+            
+            try {
+                const response = await fetch(`/terminate-program/${pid}`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification(result.message, 'success');
+                    checkRunningPrograms();
+                } else {
+                    showNotification(result.error, 'danger');
+                }
+            } catch (error) {
+                showNotification(`終止程式失敗: ${error}`, 'danger');
+            }
+        }
+
+        // Run process
+        async function runProcess() {
+            const folderPath = document.getElementById('folderPath').value;
+            const prompt = document.getElementById('prompt').value;
+            
+            if (!folderPath || !prompt) {
+                showNotification('請先選擇資料夾並輸入 AI 指令', 'warning');
+                return;
+            }
+            
+            showLoading('正在執行 AI 自動化流程...');
+            
+            const config = collectConfig();
+            
+            try {
+                const response = await fetch('/run-process', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        folder_path: folderPath,
+                        prompt: prompt,
+                        config: config
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('terminalOutput').textContent = result.output || '執行成功';
+                    document.getElementById('aiResponse').textContent = result.ai_response || '無 AI 回應';
+                    
+                    // 更新 VS Code 狀態
+                    const vscodeStatus = result.output.includes('程式已在背景成功啟動') 
+                        ? `✅ VS Code 已啟動，程式正在執行 - ${result.filename || '程式'}`
+                        : `⚠️ VS Code 已啟動 - ${result.filename || '未知檔案'}`;
+                    document.getElementById('vscodeStatus').textContent = vscodeStatus;
+                    
+                    showNotification('執行成功！程式已在背景執行', 'success');
+                    
+                    // 檢查運行中的程式
+                    setTimeout(() => {
+                        checkRunningPrograms();
+                    }, 1000);
+                    
+                    // Switch to monitor tab to show results
+                    document.querySelectorAll('.tab')[2].click();
+                    
+                    // 提示用戶可以擷取畫面
+                    setTimeout(() => {
+                        showNotification('💡 提示：點擊「延遲 5 秒後擷取」按鈕來擷取程式運行畫面', 'info');
+                    }, 2000);
+                    
+                } else {
+                    document.getElementById('terminalOutput').textContent = result.error || '執行失敗';
+                    showNotification(`執行失敗: ${result.error}`, 'danger');
+                }
+            } catch (error) {
+                showNotification(`連接錯誤: ${error}`, 'danger');
+                document.getElementById('terminalOutput').textContent = `連接錯誤: ${error}`;
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Capture screenshots
+        async function captureScreenshots(mode = 'all') {
+            showLoading('正在擷取螢幕畫面...');
+            
+            try {
+                const response = await fetch('/capture-screenshots', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode: mode })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    displayScreenshots(result.screenshots);
+                    showNotification(`成功擷取 ${result.count} 張截圖！`, 'success');
+                } else {
+                    showNotification(`擷取失敗: ${result.error}`, 'danger');
+                }
+            } catch (error) {
+                showNotification(`錯誤: ${error}`, 'danger');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Delayed capture screenshots
+        async function delayedCaptureScreenshots() {
+            let countdown = 5;
+            const updateCountdown = () => {
+                showLoading(`將在 ${countdown} 秒後擷取畫面...`);
+                countdown--;
+                
+                if (countdown >= 0) {
+                    setTimeout(updateCountdown, 1000);
+                } else {
+                    captureScreenshots('all');
+                }
+            };
+            
+            updateCountdown();
+        }
+
+        // Display screenshots
+        function displayScreenshots(screenshots) {
+            const preview = document.getElementById('screenshotPreview');
+            preview.innerHTML = '';
+            
+            screenshots.forEach(screenshot => {
+                const item = document.createElement('div');
+                item.className = 'screenshot-item';
+                
+                // 使用後端提供的URL路徑
+                const imgSrc = `/screenshot/${screenshot.filename}`;
+                
+                item.innerHTML = `
+                    <img src="${imgSrc}" alt="${screenshot.name}" 
+                         onclick="showImageModal('${imgSrc}')"
+                         onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22><text x=%2250%%22 y=%2250%%22 text-anchor=%22middle%22>載入失敗</text></svg>'">
+                    <div class="screenshot-label">
+                        ${screenshot.name}
+                        <br><small>${screenshot.timestamp}</small>
+                    </div>
+                `;
+                preview.appendChild(item);
+            });
+            
+            // 自動切換到監控標籤頁
+            document.querySelectorAll('.tab')[2].click();
+        }
+        
+        // Show image modal
+        function showImageModal(src) {
+            document.getElementById('modalImage').src = src;
+            document.getElementById('imageModal').classList.add('active');
+        }
+        
+        // Close image modal
+        function closeImageModal() {
+            document.getElementById('imageModal').classList.remove('active');
+        }
+
+        // Save configuration
+        async function saveConfig() {
+            showLoading('正在儲存設定...');
+            
+            const config = collectConfig();
+            
+            try {
+                const response = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                
+                if (response.ok) {
+                    showNotification('設定已成功儲存！', 'success');
+                } else {
+                    showNotification('儲存失敗', 'danger');
+                }
+            } catch (error) {
+                showNotification(`錯誤: ${error}`, 'danger');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Collect configuration
+        function collectConfig() {
+            return {
+                connection_method: document.querySelector('input[name="connectionMethod"]:checked').value,
+                gemini_api_key: document.getElementById('apiKey').value,
+                model_name: document.getElementById('modelName').value,
+                system_instruction: document.getElementById('systemInstruction').value,
+                generation_params: {
+                    temperature: parseFloat(document.getElementById('temperature').value),
+                    top_p: parseFloat(document.getElementById('topP').value),
+                    top_k: parseInt(document.getElementById('topK').value),
+                    max_output_tokens: parseInt(document.getElementById('maxTokens').value),
+                    candidate_count: 1,
+                    stop_sequences: [],
+                    response_mime_type: 'text/plain'
+                },
+                safety_settings: {
+                    "HARM_CATEGORY_HARASSMENT": "BLOCK_MEDIUM_AND_ABOVE",
+                    "HARM_CATEGORY_HATE_SPEECH": "BLOCK_MEDIUM_AND_ABOVE",
+                    "HARM_CATEGORY_SEXUALLY_EXPLICIT": "BLOCK_MEDIUM_AND_ABOVE",
+                    "HARM_CATEGORY_DANGEROUS_CONTENT": "BLOCK_MEDIUM_AND_ABOVE"
+                },
+                automation_settings: {
+                    auto_error_fix: document.getElementById('autoErrorFix').checked,
+                    auto_optimize: document.getElementById('autoOptimize').checked,
+                    auto_test: document.getElementById('autoTest').checked,
+                    monitor_interval: parseInt(document.getElementById('monitorInterval').value)
+                }
+            };
+        }
+
+        // Load configuration
+        async function loadConfig() {
+            try {
+                const response = await fetch('/api/config');
+                const config = await response.json();
+                
+                // Set values
+                if (config.connection_method) {
+                    document.querySelector(`input[name="connectionMethod"][value="${config.connection_method}"]`).checked = true;
+                    toggleConnectionMethod();
+                }
+                
+                document.getElementById('apiKey').value = config.gemini_api_key || '';
+                document.getElementById('modelName').value = config.model_name || 'gemini-2.5-pro';
+                document.getElementById('systemInstruction').value = config.system_instruction || 'You are a helpful coding assistant.';
+                
+                // Set parameters
+                const params = config.generation_params || {};
+                document.getElementById('temperature').value = params.temperature || 1.0;
+                document.getElementById('topP').value = params.top_p || 0.95;
+                document.getElementById('topK').value = params.top_k || 64;
+                document.getElementById('maxTokens').value = params.max_output_tokens || 8192;
+                
+                // Update displays
+                updateParamValue('temperature');
+                updateParamValue('topP');
+                updateParamValue('topK');
+                updateParamValue('maxTokens');
+                
+                // Set automation settings
+                if (config.automation_settings) {
+                    document.getElementById('autoErrorFix').checked = config.automation_settings.auto_error_fix || false;
+                    document.getElementById('autoOptimize').checked = config.automation_settings.auto_optimize || false;
+                    document.getElementById('autoTest').checked = config.automation_settings.auto_test || false;
+                    document.getElementById('monitorInterval').value = config.automation_settings.monitor_interval || 5;
+                }
+                
+                // Set default prompt
+                document.getElementById('prompt').value = `生成一個簡單酷炫動畫內容的 Python 程式碼。
+使用 pygame 或 tkinter 創建一個視覺化動畫效果，例如：
+- 彩色粒子效果
+- 旋轉圖形
+- 彈跳球動畫
+- 星空效果
+或任何其他視覺上吸引人的動畫。
+
+請務必包含安裝所需套件的指令，格式如下：
+;;;pip install pygame;;;
+
+請將完整的程式碼內容放在一個 Python 程式碼區塊中 (\`\`\`python ... \`\`\`)，
+並輸出檔案名稱格式如下：
+/*/cool_animation.py/*/`;
+                
+            } catch (error) {
+                console.error('Failed to load config:', error);
+            }
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const toastContainer = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            const icons = {
+                'success': '✅',
+                'warning': '⚠️',
+                'danger': '❌',
+                'info': 'ℹ️'
+            };
+            
+            toast.innerHTML = `
+                <span style="font-size: 1.2rem;">${icons[type] || icons.info}</span>
+                <span>${message}</span>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            // 自動移除
+            setTimeout(() => {
+                toast.style.animation = 'slideIn 0.3s ease reverse';
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        // Monitor Terminal
+        async function monitorTerminal() {
+            showLoading('正在擷取 VS Code Terminal...');
+            
+            try {
+                const response = await fetch('/monitor-terminal', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // 顯示 Terminal 截圖
+                    const screenshot = {
+                        name: 'VS Code Terminal',
+                        filename: result.screenshot.filename,
+                        timestamp: result.screenshot.timestamp
+                    };
+                    
+                    // 添加到現有截圖或創建新的預覽
+                    const preview = document.getElementById('screenshotPreview');
+                    const item = document.createElement('div');
+                    item.className = 'screenshot-item';
+                    
+                    const imgSrc = `/screenshot/${screenshot.filename}`;
+                    
+                    item.innerHTML = `
+                        <img src="${imgSrc}" alt="${screenshot.name}" 
+                             onclick="showImageModal('${imgSrc}')"
+                             onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22><text x=%2250%%22 y=%2250%%22 text-anchor=%22middle%22>載入失敗</text></svg>'">
+                        <div class="screenshot-label">
+                            ${screenshot.name}
+                            <br><small>${screenshot.timestamp}</small>
+                        </div>
+                    `;
+                    
+                    // 添加到最前面
+                    preview.insertBefore(item, preview.firstChild);
+                    
+                    showNotification('已擷取 VS Code Terminal', 'success');
+                } else {
+                    showNotification(`擷取失敗: ${result.error}`, 'danger');
+                }
+            } catch (error) {
+                showNotification(`錯誤: ${error}`, 'danger');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Toggle automation
+        let automationInterval = null;
+        function toggleAutomation() {
+            const button = event.target;
+            
+            if (automationInterval) {
+                clearInterval(automationInterval);
+                automationInterval = null;
+                button.innerHTML = '🎯 開始自動化監控';
+                button.classList.remove('btn-danger');
+                button.classList.add('btn-warning');
+                
+                const log = document.getElementById('automationLog');
+                log.textContent += '\n[' + new Date().toLocaleTimeString() + '] 自動化監控已停止\n';
+            } else {
+                const interval = parseInt(document.getElementById('monitorInterval').value) * 1000;
+                automationInterval = setInterval(performAutomationCheck, interval);
+                button.innerHTML = '⏹️ 停止自動化監控';
+                button.classList.remove('btn-warning');
+                button.classList.add('btn-danger');
+                
+                const log = document.getElementById('automationLog');
+                log.textContent += '\n[' + new Date().toLocaleTimeString() + '] 自動化監控已啟動\n';
+            }
+        }
+
+        // Perform automation check
+        async function performAutomationCheck() {
+            const log = document.getElementById('automationLog');
+            log.textContent += '[' + new Date().toLocaleTimeString() + '] 執行自動化檢查...\n';
+            
+            // Here you would implement the actual automation logic
+            // For example: check for errors, run tests, etc.
+        }
+
+        // Initialize on load
+        let programCheckInterval = null;
+        
+        window.addEventListener('DOMContentLoaded', () => {
+            loadConfig();
+            
+            // 定期檢查運行中的程式
+            programCheckInterval = setInterval(() => {
+                checkRunningPrograms();
+            }, 5000);  // 每 5 秒檢查一次
+        });
+        
+        // 清理定時器
+        window.addEventListener('beforeunload', () => {
+            if (programCheckInterval) {
+                clearInterval(programCheckInterval);
+            }
+        });
+    </script>
+</body>
+</html>
