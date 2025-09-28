@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 自動化開發控制器 Pro</title>
+    <title>AI 自動化開發控制器 Pro v3.1</title>
     <style>
         :root {
             --primary: #2563eb;
@@ -20,6 +20,8 @@
             --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
             --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             --gradient-blue: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+            --gradient-purple: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            --gradient-green: linear-gradient(135deg, #10b981 0%, #059669 100%);
         }
 
         * {
@@ -37,7 +39,7 @@
         }
 
         .main-container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             animation: fadeIn 0.5s ease;
         }
@@ -70,6 +72,15 @@
             font-size: 1.1rem;
         }
 
+        .version-badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+
         /* Status Bar */
         .status-bar {
             background: white;
@@ -100,6 +111,15 @@
             0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
             70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
             100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        .response-mode-badge {
+            background: var(--gradient-purple);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
         }
 
         /* Cards */
@@ -293,6 +313,70 @@
             transform: none !important;
         }
 
+        /* Response Mode Toggle */
+        .response-mode-toggle {
+            display: flex;
+            gap: 10px;
+            padding: 5px;
+            background: var(--light);
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .mode-option {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            color: var(--secondary);
+        }
+
+        .mode-option.active {
+            background: var(--gradient-purple);
+            color: white;
+        }
+
+        /* Project Info Display */
+        .project-info {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border-left: 4px solid var(--primary);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .project-info h3 {
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
+        .file-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .file-tag {
+            background: white;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.85rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .file-tag.has-window {
+            background: var(--gradient-green);
+            color: white;
+        }
+
         /* Toggle Switch */
         .toggle-group {
             display: flex;
@@ -424,7 +508,7 @@
             color: #991b1b;
         }
 
-        /* Loading Indicator - 非阻塞式 */
+        /* Loading Indicator */
         .loading-indicator {
             position: fixed;
             top: 20px;
@@ -451,14 +535,6 @@
             border-top-color: var(--primary);
             border-radius: 50%;
             animation: spin 1s linear infinite;
-        }
-
-        .loading-content {
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            text-align: center;
-            box-shadow: var(--shadow-lg);
         }
 
         .spinner {
@@ -489,6 +565,27 @@
             white-space: pre-wrap;
             word-break: break-word;
         }
+
+        /* JSON Display */
+        .json-container {
+            background: #1e293b;
+            color: #e2e8f0;
+            border-radius: 10px;
+            padding: 20px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .json-key { color: #60a5fa; }
+        .json-string { color: #34d399; }
+        .json-number { color: #fbbf24; }
+        .json-boolean { color: #f87171; }
+        .json-null { color: #9ca3af; }
 
         /* Screenshot Preview */
         .screenshot-preview {
@@ -617,23 +714,9 @@
             .grid-2 {
                 grid-template-columns: 1fr;
             }
-        }
-        @media (max-width: 768px) {
-            .header h1 {
-                font-size: 1.8rem;
-            }
-
-            .tabs {
+            
+            .response-mode-toggle {
                 flex-direction: column;
-            }
-
-            .param-control {
-                grid-template-columns: 1fr;
-                gap: 10px;
-            }
-
-            .grid-2 {
-                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -647,7 +730,7 @@
     <!-- Toast Notifications Container -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <!-- Loading Indicator (非阻塞) -->
+    <!-- Loading Indicator -->
     <div class="loading-indicator" id="loadingIndicator">
         <div class="small-spinner"></div>
         <span id="loadingMessage">處理中...</span>
@@ -658,6 +741,7 @@
         <div class="header">
             <h1>🚀 AI 自動化開發控制器 Pro</h1>
             <p>智能化程式開發助手 - 整合 Gemini AI 與 VS Code 自動化控制</p>
+            <span class="version-badge">v3.1.0 - PyWinCtl 增強版</span>
         </div>
 
         <!-- Status Bar -->
@@ -666,8 +750,9 @@
                 <div class="status-dot"></div>
                 <span>系統就緒</span>
             </div>
-            <div id="connectionStatus">
+            <div id="connectionStatus" style="display: flex; gap: 10px; align-items: center;">
                 <span id="connectionMode">連接模式: API Key</span>
+                <span class="response-mode-badge" id="responseModeIndicator">JSON 模式</span>
             </div>
         </div>
 
@@ -683,13 +768,26 @@
                 <button class="tab" onclick="switchTab('monitor')">
                     📊 監控
                 </button>
-                <button class="tab" onclick="switchTab('automation')">
-                    🤖 自動化
+                <button class="tab" onclick="switchTab('projects')">
+                    📦 專案
                 </button>
             </div>
 
             <!-- Main Tab -->
             <div id="main-tab" class="tab-content active">
+                <!-- Response Mode Selection -->
+                <div class="form-group">
+                    <label class="form-label">🔍 回應模式</label>
+                    <div class="response-mode-toggle">
+                        <button class="mode-option active" onclick="setResponseMode('json')">
+                            JSON 結構化輸出（推薦）
+                        </button>
+                        <button class="mode-option" onclick="setResponseMode('text')">
+                            純文本模式（向後相容）
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Folder Selection -->
                 <div class="form-group">
                     <label class="form-label">📁 專案資料夾</label>
@@ -706,6 +804,9 @@
                     <label class="form-label">💡 AI 指令</label>
                     <textarea id="prompt" placeholder="請輸入您要 AI 協助的任務描述..."></textarea>
                 </div>
+
+                <!-- Project Info Display -->
+                <div id="projectInfoDisplay" style="display: none;"></div>
 
                 <!-- Action Buttons -->
                 <div class="grid-2">
@@ -789,17 +890,18 @@
                     <div class="form-group">
                         <label class="form-label">AI 模型</label>
                         <select id="modelName">
-                            <option value="gemini-2.5-pro">Gemini 2.5 Pro (最強)</option>
-                            <option value="gemini-2.5-flash">Gemini 2.5 Flash (最快)</option>
-                            <option value="gemini-1.5-pro-latest">Gemini 1.5 Pro</option>
-                            <option value="gemini-1.5-flash-latest">Gemini 1.5 Flash</option>
+                            <option value="gemini-2.5-pro">Gemini 2.5 Pro (最強，支援 JSON)</option>
+                            <option value="gemini-2.5-flash">Gemini 2.5 Flash (最快，支援 JSON)</option>
+                            <option value="gemini-1.5-pro">Gemini 1.5 Pro (支援 JSON)</option>
+                            <option value="gemini-1.5-flash">Gemini 1.5 Flash (支援 JSON)</option>
+                            <option value="gemini-1.0-pro">Gemini 1.0 Pro (不支援 JSON)</option>
                         </select>
                     </div>
 
                     <!-- System Instruction -->
                     <div class="form-group">
-                        <label class="form-label">系統指令</label>
-                        <textarea id="systemInstruction" placeholder="設定 AI 的行為和角色..."></textarea>
+                        <label class="form-label">系統指令（純文本模式時使用）</label>
+                        <textarea id="systemInstruction" placeholder="設定 AI 的行為和角色..." rows="6"></textarea>
                     </div>
 
                     <button class="btn btn-success btn-large" onclick="saveConfig()">
@@ -816,8 +918,8 @@
 
                     <div class="param-control">
                         <div class="param-label">溫度 (Temperature)</div>
-                        <input type="range" id="temperature" min="0" max="2" step="0.05" value="1.0" oninput="updateParamValue('temperature')">
-                        <div class="param-value" id="temperature-value">1.0</div>
+                        <input type="range" id="temperature" min="0" max="2" step="0.05" value="0.7" oninput="updateParamValue('temperature')">
+                        <div class="param-value" id="temperature-value">0.7</div>
                     </div>
 
                     <div class="param-control">
@@ -846,7 +948,7 @@
                 <div class="card">
                     <div class="card-header">
                         <div class="card-icon">💻</div>
-                        <div class="card-title">Terminal 輸出</div>
+                        <div class="card-title">執行結果</div>
                     </div>
                     <div class="output-container" id="terminalOutput">
                         等待執行結果...
@@ -858,11 +960,6 @@
                     <div class="card-header">
                         <div class="card-icon">📸</div>
                         <div class="card-title">螢幕擷取</div>
-                    </div>
-                    <div style="margin-bottom: 15px;">
-                        <button class="btn btn-secondary" onclick="monitorTerminal()" style="width: 100%;">
-                            <span>📟</span> 擷取 VS Code Terminal
-                        </button>
                     </div>
                     <div class="screenshot-preview" id="screenshotPreview">
                         <!-- Screenshots will be displayed here -->
@@ -879,58 +976,43 @@
                         等待 AI 回應...
                     </div>
                 </div>
+
+                <!-- JSON Response (if applicable) -->
+                <div class="card" id="jsonResponseCard" style="margin-top: 20px; display: none;">
+                    <div class="card-header">
+                        <div class="card-icon">📋</div>
+                        <div class="card-title">JSON 結構化輸出</div>
+                    </div>
+                    <div class="json-container" id="jsonResponse">
+                        <!-- JSON will be displayed here -->
+                    </div>
+                </div>
             </div>
 
-            <!-- Automation Tab -->
-            <div id="automation-tab" class="tab-content">
+            <!-- Projects Tab -->
+            <div id="projects-tab" class="tab-content">
                 <div class="card">
                     <div class="card-header">
-                        <div class="card-icon">🔄</div>
-                        <div class="card-title">自動化工作流程</div>
+                        <div class="card-icon">📦</div>
+                        <div class="card-title">專案管理</div>
                     </div>
-
-                    <div class="toggle-group">
-                        <label>自動錯誤修正</label>
-                        <div class="toggle-switch">
-                            <input type="checkbox" id="autoErrorFix">
-                            <span class="toggle-slider"></span>
+                    
+                    <div id="projectsList">
+                        <div class="alert alert-info">
+                            <span>ℹ️</span>
+                            <span>執行 AI 自動化後，專案資訊將顯示在此處</span>
                         </div>
                     </div>
-
-                    <div class="toggle-group">
-                        <label>自動程式碼優化</label>
-                        <div class="toggle-switch">
-                            <input type="checkbox" id="autoOptimize">
-                            <span class="toggle-slider"></span>
-                        </div>
-                    </div>
-
-                    <div class="toggle-group">
-                        <label>自動測試執行</label>
-                        <div class="toggle-switch">
-                            <input type="checkbox" id="autoTest">
-                            <span class="toggle-slider"></span>
-                        </div>
-                    </div>
-
-                    <div class="form-group" style="margin-top: 20px;">
-                        <label class="form-label">監控間隔（秒）</label>
-                        <input type="number" id="monitorInterval" value="5" min="1" max="60">
-                    </div>
-
-                    <button class="btn btn-warning btn-large" onclick="toggleAutomation()">
-                        🎯 開始自動化監控
-                    </button>
                 </div>
 
-                <!-- Automation Log -->
+                <!-- Installation Logs -->
                 <div class="card" style="margin-top: 20px;">
                     <div class="card-header">
-                        <div class="card-icon">📝</div>
-                        <div class="card-title">自動化日誌</div>
+                        <div class="card-icon">📋</div>
+                        <div class="card-title">安裝日誌</div>
                     </div>
-                    <div class="output-container" id="automationLog">
-                        自動化工作流程日誌將顯示於此...
+                    <div class="output-container" id="installationLogs">
+                        尚無安裝日誌...
                     </div>
                 </div>
             </div>
@@ -938,6 +1020,11 @@
     </div>
 
     <script>
+        // Global variables
+        let currentResponseMode = 'json';
+        let currentProject = null;
+        let allWindowTitles = [];  // 儲存所有需要擷取的視窗標題
+        
         // Tab switching
         function switchTab(tabName) {
             // Remove active class from all tabs and contents
@@ -947,6 +1034,20 @@
             // Add active class to selected tab
             event.target.classList.add('active');
             document.getElementById(`${tabName}-tab`).classList.add('active');
+        }
+
+        // Set response mode
+        function setResponseMode(mode) {
+            currentResponseMode = mode;
+            document.querySelectorAll('.mode-option').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Update indicator
+            const indicator = document.getElementById('responseModeIndicator');
+            indicator.textContent = mode === 'json' ? 'JSON 模式' : '文本模式';
+            
+            // Show notification
+            showNotification(`已切換至${mode === 'json' ? 'JSON 結構化輸出' : '純文本'}模式`, 'info');
         }
 
         // Update parameter value display
@@ -973,7 +1074,7 @@
             document.getElementById('connectionMode').textContent = `連接模式: ${method === 'api_key' ? 'API Key' : 'Google Cloud Auth'}`;
         }
 
-        // Show loading indicator (非阻塞)
+        // Show loading indicator
         function showLoading(message = '處理中...') {
             document.getElementById('loadingMessage').textContent = message;
             document.getElementById('loadingIndicator').classList.add('active');
@@ -1004,6 +1105,87 @@
             }
         }
 
+        // Extract window titles from JSON response
+        function extractWindowTitles(jsonData) {
+            const titles = [];
+            
+            if (jsonData && jsonData.files) {
+                for (const file of jsonData.files) {
+                    // 收集所有可能的視窗標題
+                    if (file.opens_window && file.window_title) {
+                        titles.push(file.window_title);
+                        console.log('Found window title:', file.window_title);
+                    }
+                    if (file.is_web_app && file.web_title) {
+                        titles.push(file.web_title);
+                        console.log('Found web title:', file.web_title);
+                    }
+                }
+            }
+            
+            return titles;
+        }
+
+        // Display project info
+        function displayProjectInfo(project) {
+            const display = document.getElementById('projectInfoDisplay');
+            if (!project) {
+                display.style.display = 'none';
+                return;
+            }
+            
+            currentProject = project;
+            
+            let html = `
+                <div class="project-info">
+                    <h3>📦 ${project.name}</h3>
+                    <p>${project.description}</p>
+                    <div><strong>檔案數量:</strong> ${project.files_count}</div>
+                    ${project.main_file ? `<div><strong>主檔案:</strong> ${project.main_file}</div>` : ''}
+                    ${project.has_gui ? '<div>🖥️ 包含圖形介面</div>' : ''}
+                </div>
+            `;
+            
+            display.innerHTML = html;
+            display.style.display = 'block';
+        }
+
+        // Display JSON response
+        function displayJsonResponse(jsonData) {
+            if (!jsonData) return;
+            
+            const card = document.getElementById('jsonResponseCard');
+            const container = document.getElementById('jsonResponse');
+            
+            try {
+                // Pretty print JSON with syntax highlighting
+                const formatted = JSON.stringify(jsonData, null, 2);
+                const highlighted = formatted.replace(
+                    /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+                    function (match) {
+                        let cls = 'json-number';
+                        if (/^"/.test(match)) {
+                            if (/:$/.test(match)) {
+                                cls = 'json-key';
+                            } else {
+                                cls = 'json-string';
+                            }
+                        } else if (/true|false/.test(match)) {
+                            cls = 'json-boolean';
+                        } else if (/null/.test(match)) {
+                            cls = 'json-null';
+                        }
+                        return `<span class="${cls}">${match}</span>`;
+                    }
+                );
+                
+                container.innerHTML = highlighted;
+                card.style.display = 'block';
+            } catch (e) {
+                console.error('JSON 顯示錯誤:', e);
+            }
+        }
+
         // Check running programs
         async function checkRunningPrograms() {
             try {
@@ -1021,12 +1203,15 @@
                                 ? `運行中 (${prog.run_time}秒)` 
                                 : `已結束 (退出碼: ${prog.exit_code})`;
                             
+                            const windowInfo = prog.window_title ? `<br><small>視窗: ${prog.window_title}</small>` : '';
+                            
                             html += `
                                 <div style="margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 5px;">
                                     ${statusIcon} <strong>PID ${prog.pid}:</strong> ${prog.filename}
+                                    ${windowInfo}
                                     <br><small>${statusText}</small>
                                     ${prog.status === 'running' ? `
-                                        <button class="btn btn-danger btn-sm" onclick="terminateProgram(${prog.pid})" style="float: right; padding: 2px 8px; font-size: 0.8rem;">
+                                        <button class="btn btn-danger btn-sm" onclick="terminateProgram(${prog.pid})" style="float: right;">
                                             停止
                                         </button>
                                     ` : ''}
@@ -1080,6 +1265,7 @@
             showLoading('正在執行 AI 自動化流程...');
             
             const config = collectConfig();
+            config.response_mode = currentResponseMode;
             
             try {
                 const response = await fetch('/run-process', {
@@ -1098,15 +1284,61 @@
                     document.getElementById('terminalOutput').textContent = result.output || '執行成功';
                     document.getElementById('aiResponse').textContent = result.ai_response || '無 AI 回應';
                     
-                    // 更新 VS Code 狀態
+                    // 重要：從 JSON 回應中提取所有視窗標題
+                    allWindowTitles = [];
+                    
+                    // Display project info
+                    if (result.project) {
+                        displayProjectInfo(result.project);
+                        currentProject.window_titles = [];
+                        
+                        // Extract window titles from JSON response if available
+                        if (result.ai_response_json && result.ai_response_json.files) {
+                            const extractedTitles = extractWindowTitles(result.ai_response_json);
+                            allWindowTitles = extractedTitles;
+                            currentProject.window_titles = extractedTitles;
+                            
+                            console.log('Extracted window titles:', allWindowTitles);
+                        }
+                        
+                        // Update projects tab
+                        const projectsList = document.getElementById('projectsList');
+                        projectsList.innerHTML = `
+                            <div class="project-info">
+                                <h3>📦 ${result.project.name}</h3>
+                                <p>${result.project.description}</p>
+                                ${allWindowTitles.length > 0 ? 
+                                    `<p><strong>視窗標題:</strong> ${allWindowTitles.join(', ')}</p>` : ''}
+                                <div class="file-list">
+                                    ${result.files_created ? result.files_created.map(file => {
+                                        const filename = file.split('/').pop();
+                                        const hasWindow = result.project.has_gui && filename.includes('.py');
+                                        return `<span class="file-tag ${hasWindow ? 'has-window' : ''}">${hasWindow ? '🖥️' : '📄'} ${filename}</span>`;
+                                    }).join('') : ''}
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    // Display JSON response if available
+                    if (result.ai_response_json) {
+                        displayJsonResponse(result.ai_response_json);
+                    }
+                    
+                    // Display installation logs
+                    if (result.installation_logs && result.installation_logs.length > 0) {
+                        document.getElementById('installationLogs').textContent = result.installation_logs.join('\n');
+                    }
+                    
+                    // Update VS Code status
                     const vscodeStatus = result.output.includes('程式已在背景成功啟動') 
-                        ? `✅ VS Code 已啟動，程式正在執行 - ${result.filename || '程式'}`
-                        : `⚠️ VS Code 已啟動 - ${result.filename || '未知檔案'}`;
+                        ? `✅ VS Code 已啟動，程式正在執行`
+                        : `⚠️ VS Code 已啟動`;
                     document.getElementById('vscodeStatus').textContent = vscodeStatus;
                     
                     showNotification('執行成功！程式已在背景執行', 'success');
                     
-                    // 檢查運行中的程式
+                    // Check running programs
                     setTimeout(() => {
                         checkRunningPrograms();
                     }, 1000);
@@ -1114,13 +1346,16 @@
                     // Switch to monitor tab to show results
                     document.querySelectorAll('.tab')[2].click();
                     
-                    // 提示用戶可以擷取畫面
+                    // Prompt for screenshot
                     setTimeout(() => {
-                        showNotification('💡 提示：點擊「延遲 5 秒後擷取」按鈕來擷取程式運行畫面', 'info');
+                        if (allWindowTitles.length > 0) {
+                            showNotification(`💡 提示：已偵測到 ${allWindowTitles.length} 個視窗，點擊「延遲 5 秒後擷取」來擷取程式畫面`, 'info');
+                        }
                     }, 2000);
                     
                 } else {
                     document.getElementById('terminalOutput').textContent = result.error || '執行失敗';
+                    document.getElementById('aiResponse').textContent = result.ai_response || '無 AI 回應';
                     showNotification(`執行失敗: ${result.error}`, 'danger');
                 }
             } catch (error) {
@@ -1131,22 +1366,42 @@
             }
         }
 
-        // Capture screenshots
-        async function captureScreenshots(mode = 'all') {
-            showLoading('正在擷取螢幕畫面...');
+        // Capture screenshots - improved logic
+        async function captureScreenshots(mode = 'programs') {
+            showLoading('正在擷取畫面...');
+            
+            // 使用全域儲存的視窗標題
+            let windowTitles = allWindowTitles.slice();  // 複製陣列
+            let projectName = currentProject ? currentProject.name : null;
+            
+            console.log('Capturing with titles:', windowTitles, 'Project:', projectName);
             
             try {
                 const response = await fetch('/capture-screenshots', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ mode: mode })
+                    body: JSON.stringify({ 
+                        mode: mode,
+                        window_titles: windowTitles,  // 傳送所有視窗標題
+                        project_name: projectName
+                    })
                 });
                 
                 const result = await response.json();
                 
                 if (result.success) {
                     displayScreenshots(result.screenshots);
-                    showNotification(`成功擷取 ${result.count} 張截圖！`, 'success');
+                    if (result.count > 0) {
+                        showNotification(`成功擷取 ${result.count} 張相關截圖！`, 'success');
+                    } else {
+                        showNotification('未找到指定視窗，請確認程式已啟動', 'warning');
+                        
+                        // 提供更詳細的提示
+                        if (windowTitles.length > 0) {
+                            console.log('嘗試尋找的視窗:', windowTitles);
+                            showNotification(`提示：正在尋找視窗 "${windowTitles.join(', ')}"`, 'info');
+                        }
+                    }
                 } else {
                     showNotification(`擷取失敗: ${result.error}`, 'danger');
                 }
@@ -1161,13 +1416,13 @@
         async function delayedCaptureScreenshots() {
             let countdown = 5;
             const updateCountdown = () => {
-                showLoading(`將在 ${countdown} 秒後擷取畫面...`);
+                showLoading(`將在 ${countdown} 秒後擷取程式視窗...`);
                 countdown--;
                 
                 if (countdown >= 0) {
                     setTimeout(updateCountdown, 1000);
                 } else {
-                    captureScreenshots('all');
+                    captureScreenshots('programs');  // 只擷取程式視窗
                 }
             };
             
@@ -1183,7 +1438,6 @@
                 const item = document.createElement('div');
                 item.className = 'screenshot-item';
                 
-                // 使用後端提供的URL路徑
                 const imgSrc = `/screenshot/${screenshot.filename}`;
                 
                 item.innerHTML = `
@@ -1198,7 +1452,7 @@
                 preview.appendChild(item);
             });
             
-            // 自動切換到監控標籤頁
+            // Auto switch to monitor tab
             document.querySelectorAll('.tab')[2].click();
         }
         
@@ -1244,6 +1498,7 @@
                 connection_method: document.querySelector('input[name="connectionMethod"]:checked').value,
                 gemini_api_key: document.getElementById('apiKey').value,
                 model_name: document.getElementById('modelName').value,
+                response_mode: currentResponseMode,
                 system_instruction: document.getElementById('systemInstruction').value,
                 generation_params: {
                     temperature: parseFloat(document.getElementById('temperature').value),
@@ -1252,7 +1507,7 @@
                     max_output_tokens: parseInt(document.getElementById('maxTokens').value),
                     candidate_count: 1,
                     stop_sequences: [],
-                    response_mime_type: 'text/plain'
+                    response_mime_type: currentResponseMode === 'json' ? 'application/json' : 'text/plain'
                 },
                 safety_settings: {
                     "HARM_CATEGORY_HARASSMENT": "BLOCK_MEDIUM_AND_ABOVE",
@@ -1261,10 +1516,10 @@
                     "HARM_CATEGORY_DANGEROUS_CONTENT": "BLOCK_MEDIUM_AND_ABOVE"
                 },
                 automation_settings: {
-                    auto_error_fix: document.getElementById('autoErrorFix').checked,
-                    auto_optimize: document.getElementById('autoOptimize').checked,
-                    auto_test: document.getElementById('autoTest').checked,
-                    monitor_interval: parseInt(document.getElementById('monitorInterval').value)
+                    auto_error_fix: false,
+                    auto_optimize: false,
+                    auto_test: false,
+                    monitor_interval: 5
                 }
             };
         }
@@ -1283,11 +1538,25 @@
                 
                 document.getElementById('apiKey').value = config.gemini_api_key || '';
                 document.getElementById('modelName').value = config.model_name || 'gemini-2.5-pro';
-                document.getElementById('systemInstruction').value = config.system_instruction || 'You are a helpful coding assistant.';
+                document.getElementById('systemInstruction').value = config.system_instruction || '';
+                
+                // Set response mode
+                if (config.response_mode) {
+                    currentResponseMode = config.response_mode;
+                    const modeButtons = document.querySelectorAll('.mode-option');
+                    modeButtons.forEach(btn => {
+                        btn.classList.remove('active');
+                        if (btn.textContent.includes(config.response_mode === 'json' ? 'JSON' : '文本')) {
+                            btn.classList.add('active');
+                        }
+                    });
+                    document.getElementById('responseModeIndicator').textContent = 
+                        config.response_mode === 'json' ? 'JSON 模式' : '文本模式';
+                }
                 
                 // Set parameters
                 const params = config.generation_params || {};
-                document.getElementById('temperature').value = params.temperature || 1.0;
+                document.getElementById('temperature').value = params.temperature || 0.7;
                 document.getElementById('topP').value = params.top_p || 0.95;
                 document.getElementById('topK').value = params.top_k || 64;
                 document.getElementById('maxTokens').value = params.max_output_tokens || 8192;
@@ -1298,29 +1567,16 @@
                 updateParamValue('topK');
                 updateParamValue('maxTokens');
                 
-                // Set automation settings
-                if (config.automation_settings) {
-                    document.getElementById('autoErrorFix').checked = config.automation_settings.auto_error_fix || false;
-                    document.getElementById('autoOptimize').checked = config.automation_settings.auto_optimize || false;
-                    document.getElementById('autoTest').checked = config.automation_settings.auto_test || false;
-                    document.getElementById('monitorInterval').value = config.automation_settings.monitor_interval || 5;
-                }
-                
                 // Set default prompt
-                document.getElementById('prompt').value = `生成一個簡單酷炫動畫內容的 Python 程式碼。
-使用 pygame 或 tkinter 創建一個視覺化動畫效果，例如：
-- 彩色粒子效果
-- 旋轉圖形
-- 彈跳球動畫
-- 星空效果
-或任何其他視覺上吸引人的動畫。
+                document.getElementById('prompt').value = `創建一個多檔案的網頁應用程式專案，包含：
+1. 一個具有現代化設計的主頁面 (index.html)
+2. 樣式表檔案 (style.css) 
+3. JavaScript 互動功能 (app.js)
+4. Python 後端 API (server.py 使用 Flask)
+5. README.md 說明文件
 
-請務必包含安裝所需套件的指令，格式如下：
-;;;pip install pygame;;;
-
-請將完整的程式碼內容放在一個 Python 程式碼區塊中 (\`\`\`python ... \`\`\`)，
-並輸出檔案名稱格式如下：
-/*/cool_animation.py/*/`;
+請創建一個簡單但功能完整的待辦事項應用程式，支援添加、刪除和標記完成狀態。
+前端要有美觀的界面設計，後端提供 RESTful API。`;
                 
             } catch (error) {
                 console.error('Failed to load config:', error);
@@ -1347,97 +1603,11 @@
             
             toastContainer.appendChild(toast);
             
-            // 自動移除
+            // Auto remove
             setTimeout(() => {
                 toast.style.animation = 'slideIn 0.3s ease reverse';
                 setTimeout(() => toast.remove(), 300);
             }, 5000);
-        }
-
-        // Monitor Terminal
-        async function monitorTerminal() {
-            showLoading('正在擷取 VS Code Terminal...');
-            
-            try {
-                const response = await fetch('/monitor-terminal', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    // 顯示 Terminal 截圖
-                    const screenshot = {
-                        name: 'VS Code Terminal',
-                        filename: result.screenshot.filename,
-                        timestamp: result.screenshot.timestamp
-                    };
-                    
-                    // 添加到現有截圖或創建新的預覽
-                    const preview = document.getElementById('screenshotPreview');
-                    const item = document.createElement('div');
-                    item.className = 'screenshot-item';
-                    
-                    const imgSrc = `/screenshot/${screenshot.filename}`;
-                    
-                    item.innerHTML = `
-                        <img src="${imgSrc}" alt="${screenshot.name}" 
-                             onclick="showImageModal('${imgSrc}')"
-                             onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22><text x=%2250%%22 y=%2250%%22 text-anchor=%22middle%22>載入失敗</text></svg>'">
-                        <div class="screenshot-label">
-                            ${screenshot.name}
-                            <br><small>${screenshot.timestamp}</small>
-                        </div>
-                    `;
-                    
-                    // 添加到最前面
-                    preview.insertBefore(item, preview.firstChild);
-                    
-                    showNotification('已擷取 VS Code Terminal', 'success');
-                } else {
-                    showNotification(`擷取失敗: ${result.error}`, 'danger');
-                }
-            } catch (error) {
-                showNotification(`錯誤: ${error}`, 'danger');
-            } finally {
-                hideLoading();
-            }
-        }
-
-        // Toggle automation
-        let automationInterval = null;
-        function toggleAutomation() {
-            const button = event.target;
-            
-            if (automationInterval) {
-                clearInterval(automationInterval);
-                automationInterval = null;
-                button.innerHTML = '🎯 開始自動化監控';
-                button.classList.remove('btn-danger');
-                button.classList.add('btn-warning');
-                
-                const log = document.getElementById('automationLog');
-                log.textContent += '\n[' + new Date().toLocaleTimeString() + '] 自動化監控已停止\n';
-            } else {
-                const interval = parseInt(document.getElementById('monitorInterval').value) * 1000;
-                automationInterval = setInterval(performAutomationCheck, interval);
-                button.innerHTML = '⏹️ 停止自動化監控';
-                button.classList.remove('btn-warning');
-                button.classList.add('btn-danger');
-                
-                const log = document.getElementById('automationLog');
-                log.textContent += '\n[' + new Date().toLocaleTimeString() + '] 自動化監控已啟動\n';
-            }
-        }
-
-        // Perform automation check
-        async function performAutomationCheck() {
-            const log = document.getElementById('automationLog');
-            log.textContent += '[' + new Date().toLocaleTimeString() + '] 執行自動化檢查...\n';
-            
-            // Here you would implement the actual automation logic
-            // For example: check for errors, run tests, etc.
         }
 
         // Initialize on load
@@ -1446,13 +1616,13 @@
         window.addEventListener('DOMContentLoaded', () => {
             loadConfig();
             
-            // 定期檢查運行中的程式
+            // Periodically check running programs
             programCheckInterval = setInterval(() => {
                 checkRunningPrograms();
-            }, 5000);  // 每 5 秒檢查一次
+            }, 5000);  // Check every 5 seconds
         });
         
-        // 清理定時器
+        // Clean up timers
         window.addEventListener('beforeunload', () => {
             if (programCheckInterval) {
                 clearInterval(programCheckInterval);
