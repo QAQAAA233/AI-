@@ -21,7 +21,15 @@ import pywinctl as pwc
 from PIL import Image
 from difflib import SequenceMatcher
 
-from core import AIConfig, CodeProcessor, CONFIG_DIR, ProcessResult, SCREENSHOT_DIR, logger
+from core import (
+    AIConfig,
+    CodeProcessor,
+    CONFIG_DIR,
+    ProcessResult,
+    SCREENSHOT_DIR,
+    extract_json_object,
+    logger,
+)
 from services import GeminiAI
 
 
@@ -464,10 +472,9 @@ class ProcessManager:
                     project = CodeProcessor.parse_json_response(json_data)
                 else:
                     logger.info("嘗試從文本中提取 JSON")
-                    json_start = ai_response.find('{')
-                    json_end = ai_response.rfind('}') + 1
-                    if json_start >= 0 and json_end > json_start:
-                        json_str = ai_response[json_start:json_end].replace('\\n', '\n').replace('\\t', '\t')
+                    extracted_json = extract_json_object(ai_response)
+                    if extracted_json:
+                        json_str = extracted_json.replace('\\n', '\n').replace('\\t', '\t')
                         project = CodeProcessor.parse_json_response(json.loads(json_str))
                         logger.info("成功從文本中提取並解析 JSON")
                     else:

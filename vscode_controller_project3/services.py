@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import json
+import base64
 from dataclasses import asdict
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import google.generativeai as genai
 from google.generativeai.types import GenerationConfig, HarmCategory, HarmBlockThreshold
 
-from core import AIConfig, CONFIG_FILE, get_json_system_instruction, logger
+from core import AIConfig, CONFIG_FILE, extract_json_object, get_json_system_instruction, logger
 
 
 try:  # Optional Google Cloud Auth support
@@ -109,15 +110,74 @@ class GeminiAI:
 
         model = genai.GenerativeModel(**model_kwargs)
         response = model.generate_content(prompt, generation_config=gen_config)
-        response_text = response.text
+
+        collected_texts: List[str] = []
+        json_candidates: List[str] = []
+
+        def collect_text(text: Optional[str]) -> None:
+            if not text:
+                return
+            normalized = text.strip()
+            if not normalized:
+                return
+            collected_texts.append(normalized)
+            json_fragment = extract_json_object(normalized)
+            if json_fragment:
+                json_candidates.append(json_fragment)
+
+        if getattr(response, "candidates", None):
+            for candidate in response.candidates:
+                content = getattr(candidate, "content", None)
+                parts = getattr(content, "parts", None)
+                if not parts:
+                    continue
+                for part in parts:
+                    part_text = getattr(part, "text", None)
+                    collect_text(part_text)
+
+                    part_dict = part.to_dict() if hasattr(part, "to_dict") else {}
+                    inline_data = part_dict.get("inline_data") if isinstance(part_dict, dict) else None
+                    if inline_data and inline_data.get("mime_type") == "application/json":
+                        data = inline_data.get("data")
+                        if data:
+                            try:
+                                decoded = base64.b64decode(data).decode("utf-8")
+                                json_candidates.append(decoded)
+                                collect_text(decoded)
+                            except (ValueError, UnicodeDecodeError) as decode_err:
+                                logger.warning("JSON inline_data 解碼失敗: %s", decode_err)
+
+        response_text = getattr(response, "text", "") or ""
+        if not response_text and collected_texts:
+            response_text = "\n".join(collected_texts)
 
         json_data: Optional[Dict[str, object]] = None
         if config.response_mode == "json":
-            try:
-                json_data = json.loads(response_text)
-                logger.info("成功解析 JSON 回應")
-            except json.JSONDecodeError as exc:
-                logger.warning("JSON 解析失敗，改以純文本處理: %s", exc)
+            candidate_pool: List[str] = []
+            if response_text:
+                extracted = extract_json_object(response_text)
+                if extracted:
+                    candidate_pool.append(extracted)
+            candidate_pool.extend(json_candidates)
+
+            deduped: List[str] = []
+            seen = set()
+            for candidate in candidate_pool:
+                key = candidate.strip()
+                if key and key not in seen:
+                    seen.add(key)
+                    deduped.append(candidate)
+
+            for candidate_text in deduped:
+                try:
+                    json_data = json.loads(candidate_text)
+                    logger.info("成功解析 JSON 回應")
+                    break
+                except json.JSONDecodeError as exc:
+                    logger.debug("忽略無法解析的 JSON 候選: %s", exc)
+
+            if json_data is None:
+                logger.warning("JSON 解析失敗，改以純文本處理")
 
         return response_text, json_data
 

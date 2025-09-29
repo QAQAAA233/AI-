@@ -94,7 +94,7 @@ vscode_controller_project3/
 | 問題 | 可能原因 | 建議處理 |
 | --- | --- | --- |
 | 無法找到 VS Code 視窗 | `code` 指令未加入 PATH 或啟動時間過長 | 執行 `code --version` 確認；視情況增加等待時間 |
-| JSON 解析失敗 | 模型輸出非預期格式 | 檢查 `result.output` 內的錯誤說明，改用文本模式或調整提示 |
+| JSON 解析失敗 | 模型輸出混入 Markdown 或不完整的 JSON | 檢查 `result.output` 與 `~/.ai_controller_v3/logs` 內的日誌：若看到「忽略無法解析的 JSON 候選」代表多重回退已啟用，可再調整提示或改用文本模式 |
 | 螢幕截圖為空 | 視窗尚未建立或標題不符 | 於擷取 API 加入正確的視窗標題，或延長等待時間 |
 
 ## ✅ 測試建議

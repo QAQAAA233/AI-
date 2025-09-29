@@ -365,6 +365,36 @@ REMEMBER:
 # ============================================
 
 
+def extract_json_object(text: str) -> Optional[str]:
+    """從文字中提取第一個完整的 JSON 物件字串."""
+
+    if not text:
+        return None
+
+    cleaned = text.strip()
+    if cleaned.startswith("```"):
+        cleaned = re.sub(r"^```(?:json)?", "", cleaned, flags=re.IGNORECASE).strip()
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3].rstrip()
+
+    stack = 0
+    start: Optional[int] = None
+    for index, char in enumerate(cleaned):
+        if char == '{':
+            if start is None:
+                start = index
+            stack += 1
+        elif char == '}' and start is not None:
+            stack -= 1
+            if stack == 0:
+                return cleaned[start : index + 1]
+
+    if cleaned.startswith('{') and cleaned.endswith('}'):
+        return cleaned
+
+    return None
+
+
 class CodeProcessor:
     """程式碼解析和處理器"""
 
@@ -593,6 +623,7 @@ __all__ = [
     "CodeProcessor",
     "CONFIG_DIR",
     "CONFIG_FILE",
+    "extract_json_object",
     "FileOutput",
     "FileType",
     "LOG_DIR",
